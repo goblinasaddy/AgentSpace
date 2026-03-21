@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 274 17% 11%;
+    --foreground: 210 20% 98%;
+    --card: 274 17% 13%;
+    --card-foreground: 210 20% 98%;
+    --popover: 274 17% 11%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 264 84% 59%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 214 100% 80%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 274 10% 20%;
+    --muted-foreground: 215.4 16.3% 70%;
+    --accent: 264 84% 59%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 274 10% 20%;
+    --input: 274 10% 20%;
+    --ring: 264 84% 59%;
+    --radius: 0.75rem;
+    --chart-1: 264 84% 59%;
+    --chart-2: 214 100% 80%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+  code, pre {
+    @apply font-code;
+  }
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-[#8641EE] to-[#9BC5FF];
+}
+
+.hero-gradient {
+  background: radial-gradient(circle at top center, rgba(134, 65, 238, 0.15) 0%, rgba(27, 22, 31, 0) 100%);
+}
+
+.agent-card-hover {
+  @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(134,65,238,0.2)] hover:border-primary/50;
+}

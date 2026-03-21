@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "app-logo",
+      "description": "Circular black and white logo featuring a cool cactus character wearing a fedora and sunglasses, smoking a pipe.",
+      "imageUrl": "https://picsum.photos/seed/cactus-fedora-pipe/128/128",
+      "imageHint": "cactus fedora"
+    }
+  ]
+}

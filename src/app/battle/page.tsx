@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { Swords, Zap, RefreshCcw, MessageSquare, Bot, AlertCircle, Loader2, Search, Check, ChevronDown, User, FileUp, FileText, X } from 'lucide-react';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

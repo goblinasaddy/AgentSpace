@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Search, Filter, SlidersHorizontal, ChevronRight, MessageSquare, Terminal, Code, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { AgentCard } from '@/components/agent-card';

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight, Zap, Shield, Search, Terminal, Github } from 'lucide-react';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { AgentCard } from '@/components/agent-card';
 import { useAgents } from '@/context/agents-context';
 

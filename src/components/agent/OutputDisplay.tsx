@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { CheckCircle2, AlertTriangle, Lightbulb, Target, Sparkles, Code, AlertCircle, CheckCircle, Copy, Check, BookOpen, BarChart, Globe, Zap, ListChecks, ShieldAlert, ShieldCheck, Gavel, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 

@@ -2,7 +2,7 @@
  * @fileOverview Orchestrates the agent execution flow including input, API keys, and output.
  */
 import React, { useState, useRef } from 'react';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X } from 'lucide-react';

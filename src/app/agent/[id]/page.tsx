@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -116,14 +116,14 @@ export default function AgentDetailPage() {
                                     <CircleDot className="h-4 w-4" />
                                     Issues
                                     {agent.issues && agent.issues.length > 0 && (
-                                        <Badge variant="muted" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.issues.filter(i => i.status === 'open').length}</Badge>
+                                        <Badge variant="secondary" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.issues.filter(i => i.status === 'open').length}</Badge>
                                     )}
                                 </TabsTrigger>
                                 <TabsTrigger value="pulls" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
                                     <GitPullRequest className="h-4 w-4" />
                                     Pull Requests
                                     {agent.pullRequests && agent.pullRequests.length > 0 && (
-                                        <Badge variant="muted" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.pullRequests.filter(p => p.status === 'open').length}</Badge>
+                                        <Badge variant="secondary" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.pullRequests.filter(p => p.status === 'open').length}</Badge>
                                     )}
                                 </TabsTrigger>
                                 <TabsTrigger value="code" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">

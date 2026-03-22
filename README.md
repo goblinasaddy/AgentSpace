@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/bot.svg" width="100" height="100" alt="AgentSpace Logo">
+  <img src="./AgentSpace%20Logo.jpeg" width="100" height="100" alt="AgentSpace Logo">
   
   # 🌌 AgentSpace
   

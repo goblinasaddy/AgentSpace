@@ -5,6 +5,7 @@ import { ArrowRight, Zap, Shield, Search, Terminal, Github } from 'lucide-react'
 import { Button } from '@/components/ui/button';
 import { AgentCard } from '@/components/agent-card';
 import { useAgents } from '@/context/agents-context';
+import { Starfield } from '@/components/ui/starfield';
 
 const CactusIcon = ({ className }: { className?: string }) => (
     <svg
@@ -31,10 +32,40 @@ export default function Home() {
     return (
         <div className="flex flex-col min-h-screen">
             {/* Hero Section */}
-            <section className="relative overflow-hidden pt-20 pb-32 hero-gradient">
-                <div className="container mx-auto px-4 text-center">
+            {/* Hero Section — background-only changes, no layout/text/button changes */}
+            <section
+                className="relative overflow-hidden pt-20 pb-32"
+                style={{ background: '#0a0a14', isolation: 'isolate' }}
+            >
+                {/* Layer 1: 3d-object.jpeg background image */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        backgroundImage: "url('/3d-object.jpeg')",
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        opacity: 0.85,
+                        zIndex: 0,
+                    }}
+                />
+
+                {/* Layer 2: Animated starfield */}
+                <Starfield />
+
+                {/* Layer 3: Soft gradient overlay — only for readability, not to hide scene */}
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                        background: 'linear-gradient(to bottom, rgba(10,10,20,0.45) 0%, rgba(10,10,20,0.65) 100%)',
+                        zIndex: 3,
+                    }}
+                />
+
+                {/* Layer 4: Hero content */}
+                <div className="relative container mx-auto px-4 text-center" style={{ zIndex: 10 }}>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-medium mb-8">
-                        < Zap className="h-4 w-4" />
+                        <Zap className="h-4 w-4" />
                         <span>Now in Beta: The future of autonomous agents</span>
                     </div>
 
@@ -62,9 +93,6 @@ export default function Home() {
                         </Button>
                     </div>
                 </div>
-
-                <div className="absolute top-1/2 left-1/4 -translate-y-1/2 -z-10 blur-[120px] opacity-20 bg-primary h-[300px] w-[300px] rounded-full" />
-                <div className="absolute top-1/2 right-1/4 -translate-y-1/2 -z-10 blur-[120px] opacity-20 bg-secondary h-[300px] w-[300px] rounded-full" />
             </section>
 
             {/* Stats Section */}

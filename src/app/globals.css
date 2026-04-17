@@ -36,13 +36,22 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground font-body;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-headline;
   }
-  code, pre {
+
+  code,
+  pre {
     @apply font-code;
   }
 }
@@ -57,4 +66,9 @@
 
 .agent-card-hover {
   @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(134,65,238,0.2)] hover:border-primary/50;
+}
+
+/* Hide Next.js Dev tools indicator */
+nextjs-portal {
+  display: none !important;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, SlidersHorizontal, ChevronRight, MessageSquare, Terminal, Code, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,60 +16,63 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getAllAgents, Agent } from '@/lib/agents';
 
-type SortOption = 'rating' | 'stars' | 'name';
+type SortOption = 'newest' | 'alphabetical';
 
 export default function ExplorePage() {
-    const { agents } = useAgents();
+    const [agents, setAgents] = useState<Agent[]>([]);
+    const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('All');
-    const [activeType, setActiveType] = useState<AgentType | 'All'>('All');
+    const [activeType, setActiveType] = useState<string>('All');
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState<SortOption>('rating');
+    const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+    useEffect(() => {
+        async function fetchAgents() {
+            setLoading(true);
+            const data = await getAllAgents();
+            setAgents(data);
+            setLoading(false);
+        }
+        fetchAgents();
+    }, []);
 
     const categories = ['All', 'Coding', 'Career', 'Business', 'Analysis', 'Writing', 'Education', 'Lifestyle', 'Social', 'Legal'];
 
     const sortOptions: { label: string; value: SortOption }[] = [
-        { label: 'Top Rated', value: 'rating' },
-        { label: 'Most Stars', value: 'stars' },
-        { label: 'Alphabetical', value: 'name' },
+        { label: 'Newest', value: 'newest' },
+        { label: 'Alphabetical', value: 'alphabetical' },
     ];
 
-    const agentTypes: { label: string; value: AgentType; icon: any }[] = [
-        { label: 'Chat Agents', value: 'chat', icon: MessageSquare },
-        { label: 'Interactive (I/O)', value: 'input-output', icon: Terminal },
-        { label: 'Reference Examples', value: 'example', icon: Code },
+    const agentTypes: { label: string; value: string; icon: any }[] = [
+        { label: 'Prompt', value: 'prompt', icon: MessageSquare },
+        { label: 'Tool', value: 'tool', icon: Terminal },
+        { label: 'System', value: 'system', icon: Code },
+        { label: 'External', value: 'external', icon: Code },
     ];
 
     const processedAgents = useMemo(() => {
-        const priorityIds = ['resume-analyzer', 'code-debugger-pro', 'linkedin-poster', 'research-agent', 'legal-summarizer'];
+        if (!agents) return [];
 
         const filtered = agents.filter(agent => {
-            const matchesCategory = activeCategory === 'All' || agent.category === activeCategory || agent.tags.includes(activeCategory);
+            const agentTags = agent.tags || [];
+            const matchesCategory = activeCategory === 'All' || agentTags.includes(activeCategory);
             const matchesType = activeType === 'All' || agent.type === activeType;
             const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                agent.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                agent.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                (agent.description && agent.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                agentTags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
             return matchesCategory && matchesType && matchesSearch;
         });
 
         return [...filtered].sort((a, b) => {
-            const indexA = priorityIds.indexOf(a.id);
-            const indexB = priorityIds.indexOf(b.id);
-
-            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-            if (indexA !== -1) return -1;
-            if (indexB !== -1) return 1;
-
-            switch (sortBy) {
-                case 'rating':
-                    return b.rating - a.rating;
-                case 'stars':
-                    return b.stars - a.stars;
-                case 'name':
-                    return a.name.localeCompare(b.name);
-                default:
-                    return 0;
+            if (sortBy === 'newest') {
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             }
+            if (sortBy === 'alphabetical') {
+                return a.name.localeCompare(b.name);
+            }
+            return 0;
         });
     }, [agents, activeCategory, activeType, searchQuery, sortBy]);
 
@@ -201,13 +204,19 @@ export default function ExplorePage() {
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {processedAgents.map((agent) => (
-                            <AgentCard key={agent.id} agent={agent} />
-                        ))}
-                    </div>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-20 text-center">
+                            <h3 className="text-xl font-headline font-bold mb-2">Loading agents...</h3>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {processedAgents.map((agent) => (
+                                <AgentCard key={agent.id} agent={agent as any} />
+                            ))}
+                        </div>
+                    )}
 
-                    {processedAgents.length === 0 && (
+                    {!loading && processedAgents.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
                             <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
                                 <Search className="h-10 w-10 text-muted-foreground" />
@@ -221,7 +230,7 @@ export default function ExplorePage() {
                                     setActiveCategory('All');
                                     setActiveType('All');
                                     setSearchQuery('');
-                                    setSortBy('rating');
+                                    setSortBy('newest');
                                 }}
                             >
                                 Clear all filters

@@ -10,21 +10,77 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { AgentRunner } from '@/components/agent/AgentRunner';
-import { useAgents } from '@/context/agents-context';
+import { getAgentBySlug, Agent } from '@/lib/agents';
+import { createJob, getJob, Job } from '@/lib/jobs';
 
 export default function AgentDetailPage() {
     const params = useParams();
-    const { agents } = useAgents();
-    const agent = agents.find(a => a.id === params.id) || agents[0];
+    const slug = params.id as string;
+    
+    const [agent, setAgent] = useState<Agent | null>(null);
+    const [loading, setLoading] = useState(true);
 
     const [userInput, setUserInput] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
+    
+    // Job status UI state
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [jobDetails, setJobDetails] = useState<Job | null>(null);
+    const [runOutput, setRunOutput] = useState<string | null>(null);
+
+    // Fetch Agent
+    useEffect(() => {
+        async function loadAgent() {
+            setLoading(true);
+            const data = await getAgentBySlug(slug);
+            setAgent(data);
+            setLoading(false);
+        }
+        if (slug) {
+            loadAgent();
+        }
+    }, [slug]);
+
+    // Polling Job
+    useEffect(() => {
+        if (!jobId) return;
+        const interval = setInterval(async () => {
+            const currentJob = await getJob(jobId);
+            if (currentJob) {
+                setJobDetails(currentJob);
+                if (currentJob.status === 'completed' || currentJob.status === 'failed') {
+                    setRunOutput(JSON.stringify(currentJob.output, null, 2));
+                    clearInterval(interval);
+                    setIsProcessing(false);
+                }
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [jobId]);
+
+    const handleRunAgent = async () => {
+        if (!agent) return;
+        setIsProcessing(true);
+        setRunOutput(null);
+        setJobId(null);
+        setJobDetails(null);
+
+        // All agent types create a job — the backend worker handles execution
+        const job = await createJob(agent.id, { trigger: 'manual', type: agent.type });
+        if (job) {
+            setJobId(job.id);
+            setJobDetails(job);
+        } else {
+            setRunOutput('Failed to create job. Please try again.');
+            setIsProcessing(false);
+        }
+    };
 
     const handleSendMessage = () => {
-        if (!userInput.trim()) return;
+        if (!agent || !userInput.trim()) return;
         const newMessages = [...chatMessages, { role: 'user', text: userInput } as const];
         setChatMessages(newMessages);
         setUserInput('');
@@ -35,6 +91,14 @@ export default function AgentDetailPage() {
             setIsProcessing(false);
         }, 800);
     };
+
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    }
+
+    if (!agent) {
+        return <div className="min-h-screen flex items-center justify-center">Agent not found</div>;
+    }
 
     return (
         <div className="min-h-screen">
@@ -48,8 +112,8 @@ export default function AgentDetailPage() {
                                         <User className="h-3 w-3 text-muted-foreground" />
                                     </AvatarFallback>
                                 </Avatar>
-                                <Link href={`/profile/${agent.owner}`} className="hover:underline hover:text-primary transition-colors">
-                                    {agent.owner}
+                                <Link href={`/profile/${agent.owner_username}`} className="hover:underline hover:text-primary transition-colors">
+                                    {agent.owner_username}
                                 </Link>
                                 <span className="mx-1">/</span>
                                 <Link href={`/agent/${agent.id}`} className="font-bold text-foreground hover:underline cursor-pointer">
@@ -69,17 +133,17 @@ export default function AgentDetailPage() {
                             <div className="flex flex-wrap items-center gap-4 text-sm">
                                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
                                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                    <span className="font-bold">{agent.stars}</span>
+                                    <span className="font-bold">0</span>
                                     <span className="text-muted-foreground">Stars</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
                                     <GitFork className="h-4 w-4" />
-                                    <span className="font-bold">{agent.forks}</span>
+                                    <span className="font-bold">0</span>
                                     <span className="text-muted-foreground">Forks</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
                                     <Play className="h-4 w-4 text-primary" />
-                                    <span className="font-bold">{agent.runs}</span>
+                                    <span className="font-bold">0</span>
                                     <span className="text-muted-foreground">Runs</span>
                                 </div>
                             </div>
@@ -110,34 +174,16 @@ export default function AgentDetailPage() {
                                 </TabsTrigger>
                                 <TabsTrigger value="readme" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
                                     <BookOpen className="h-4 w-4" />
-                                    README
+                                    Details
                                 </TabsTrigger>
-                                <TabsTrigger value="issues" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
-                                    <CircleDot className="h-4 w-4" />
-                                    Issues
-                                    {agent.issues && agent.issues.length > 0 && (
-                                        <Badge variant="secondary" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.issues.filter(i => i.status === 'open').length}</Badge>
-                                    )}
-                                </TabsTrigger>
-                                <TabsTrigger value="pulls" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
-                                    <GitPullRequest className="h-4 w-4" />
-                                    Pull Requests
-                                    {agent.pullRequests && agent.pullRequests.length > 0 && (
-                                        <Badge variant="secondary" className="ml-1 bg-muted px-1.5 h-4 text-[10px]">{agent.pullRequests.filter(p => p.status === 'open').length}</Badge>
-                                    )}
-                                </TabsTrigger>
-                                <TabsTrigger value="code" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
-                                    <FileCode className="h-4 w-4" />
-                                    Config
-                                </TabsTrigger>
-                                <TabsTrigger value="usage" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
-                                    <Code2 className="h-4 w-4" />
-                                    SDK
+                                <TabsTrigger value="run" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
+                                    <Play className="h-4 w-4 text-green-500" />
+                                    Run Agent
                                 </TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="demo" className="mt-0 space-y-4">
-                                {agent.type === 'chat' && (
+                                {agent.type === 'prompt' && (
                                     <Card className="flex flex-col h-[500px] border-muted">
                                         <CardHeader className="border-b py-3 px-6 bg-muted/20">
                                             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -191,148 +237,76 @@ export default function AgentDetailPage() {
                                     </Card>
                                 )}
 
-                                {(agent.type === 'input-output' || agent.type === 'example') && (
-                                    <AgentRunner agentId={agent.id} />
-                                )}
+
                             </TabsContent>
 
                             <TabsContent value="readme" className="mt-0">
                                 <Card className="border-none shadow-none bg-transparent">
                                     <CardContent className="p-6 prose prose-invert max-w-none bg-card border rounded-lg">
-                                        <div dangerouslySetInnerHTML={{ __html: agent.readme.replace(/#/g, '<h3 class="font-headline font-bold text-2xl mb-4">').replace(/\n/g, '<br/>') }} />
+                                        <h3 className="font-headline font-bold text-2xl mb-4">Description</h3>
+                                        <p>{agent.description}</p>
+                                        
+                                        <h3 className="font-headline font-bold text-2xl mb-4 mt-6">Execution Mode</h3>
+                                        <p>{agent.execution_mode}</p>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
 
-                            <TabsContent value="issues" className="mt-0">
-                                <div className="border rounded-lg bg-card overflow-hidden">
-                                    <div className="bg-muted px-6 py-4 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1 text-sm font-bold">
-                                                <CircleDot className="h-4 w-4 text-green-500" />
-                                                {agent.issues?.filter(i => i.status === 'open').length || 0} Open
-                                            </div>
-                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Clock className="h-4 w-4" />
-                                                {agent.issues?.filter(i => i.status === 'closed').length || 0} Closed
-                                            </div>
-                                        </div>
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-bold h-8">New Issue</Button>
-                                    </div>
-                                    <div className="divide-y">
-                                        {agent.issues && agent.issues.length > 0 ? (
-                                            agent.issues.map((issue) => (
-                                                <div key={issue.id} className="p-4 hover:bg-muted/30 transition-colors flex items-start gap-3">
-                                                    <CircleDot className={`h-4 w-4 mt-1 shrink-0 ${issue.status === 'open' ? 'text-green-500' : 'text-purple-500'}`} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-bold hover:text-primary cursor-pointer mb-1 truncate">{issue.title}</h4>
-                                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                            <span>#{issue.id}</span>
-                                                            <span>opened {issue.createdAt} by</span>
-                                                            <span className="font-medium hover:text-primary cursor-pointer">{issue.author}</span>
-                                                        </div>
-                                                    </div>
-                                                    {issue.commentsCount > 0 && (
-                                                        <div className="flex items-center gap-1 text-muted-foreground text-xs shrink-0">
-                                                            <MessageCircle className="h-3 w-3" />
-                                                            {issue.commentsCount}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="py-20 text-center flex flex-col items-center gap-2">
-                                                <CircleDot className="h-10 w-10 text-muted-foreground opacity-20" />
-                                                <h3 className="font-bold text-lg">No issues found</h3>
-                                                <p className="text-sm text-muted-foreground max-w-xs">There are no open or closed issues for this repository. Contributions are welcome!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="pulls" className="mt-0">
-                                <div className="border rounded-lg bg-card overflow-hidden">
-                                    <div className="bg-muted px-6 py-4 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1 text-sm font-bold">
-                                                <GitPullRequest className="h-4 w-4 text-green-500" />
-                                                {agent.pullRequests?.filter(p => p.status === 'open').length || 0} Open
-                                            </div>
-                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Clock className="h-4 w-4" />
-                                                {agent.pullRequests?.filter(p => p.status !== 'open').length || 0} Closed
-                                            </div>
-                                        </div>
-                                        <Button size="sm" variant="outline" className="font-bold h-8">New Pull Request</Button>
-                                    </div>
-                                    <div className="divide-y">
-                                        {agent.pullRequests && agent.pullRequests.length > 0 ? (
-                                            agent.pullRequests.map((pr) => (
-                                                <div key={pr.id} className="p-4 hover:bg-muted/30 transition-colors flex items-start gap-3">
-                                                    <GitPullRequest className={`h-4 w-4 mt-1 shrink-0 ${pr.status === 'open' ? 'text-green-500' : pr.status === 'merged' ? 'text-purple-500' : 'text-red-500'}`} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-bold hover:text-primary cursor-pointer mb-1 truncate">{pr.title}</h4>
-                                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                            <span>#{pr.id}</span>
-                                                            <span>opened {pr.createdAt} by</span>
-                                                            <span className="font-medium hover:text-primary cursor-pointer">{pr.author}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="py-20 text-center flex flex-col items-center gap-2">
-                                                <GitPullRequest className="h-10 w-10 text-muted-foreground opacity-20" />
-                                                <h3 className="font-bold text-lg">No pull requests found</h3>
-                                                <p className="text-sm text-muted-foreground max-w-xs">There are no open pull requests for this repository. Start contributing today!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="code" className="mt-0 space-y-4">
-                                <div className="rounded-lg border bg-card overflow-hidden">
-                                    <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                            <FileCode className="h-4 w-4" />
-                                            agent.yaml
-                                        </div>
-                                    </div>
-                                    <pre className="p-4 text-sm font-code overflow-x-auto text-primary-foreground/80 leading-relaxed">
-                                        {agent.configYaml}
-                                    </pre>
-                                </div>
-
-                                <div className="rounded-lg border bg-card overflow-hidden">
-                                    <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                            <FileCode className="h-4 w-4" />
-                                            metadata.json
-                                        </div>
-                                    </div>
-                                    <pre className="p-4 text-sm font-code overflow-x-auto text-primary-foreground/80 leading-relaxed">
-                                        {agent.metadataJson}
-                                    </pre>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="usage" className="mt-0 space-y-4">
-                                <Card className="bg-card border overflow-hidden">
-                                    <CardHeader className="bg-muted px-4 py-3 border-b">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                                <Code2 className="h-4 w-4 text-primary" />
-                                                SDK Usage
-                                            </CardTitle>
-                                            <Badge variant="outline" className="text-[10px] uppercase">TypeScript</Badge>
-                                        </div>
+                            <TabsContent value="run" className="mt-0 space-y-4">
+                                <Card className="border-muted">
+                                    <CardHeader className="bg-muted/20 border-b">
+                                        <CardTitle className="text-lg">Execution Interface</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="p-0">
-                                        <pre className="p-6 text-sm font-code overflow-x-auto bg-black/40 text-primary-foreground/90 leading-relaxed">
-                                            {agent.usageCode}
-                                        </pre>
+                                    <CardContent className="p-6 space-y-4">
+                                        <p className="text-muted-foreground">Type: <Badge variant="outline" className="uppercase text-[10px] ml-1">{agent.type}</Badge></p>
+                                        <p className="text-muted-foreground text-sm">Execution is handled by the backend worker. Click Run to create a job.</p>
+                                        <Button onClick={handleRunAgent} disabled={isProcessing} className="w-full h-12 text-lg">
+                                            {isProcessing ? 'Processing…' : 'Run Agent'}
+                                        </Button>
+
+                                        {jobDetails && (
+                                            <div className="mt-6 p-4 rounded-lg bg-muted/30 border space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="font-bold text-sm">Job Status</h4>
+                                                    <Badge variant={
+                                                        jobDetails.status === 'completed' ? 'default' :
+                                                        jobDetails.status === 'failed' ? 'destructive' :
+                                                        jobDetails.status === 'running' ? 'secondary' : 'outline'
+                                                    }>{jobDetails.status}</Badge>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground font-mono">ID: {jobDetails.id}</p>
+
+                                                {/* Live logs from worker */}
+                                                {Array.isArray(jobDetails.logs) && jobDetails.logs.length > 0 && (
+                                                    <div className="mt-3">
+                                                        <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Logs</h5>
+                                                        <div className="bg-black/40 rounded border p-3 max-h-48 overflow-y-auto">
+                                                            {jobDetails.logs.map((entry: string, i: number) => (
+                                                                <p key={i} className="text-xs font-mono text-muted-foreground leading-relaxed">
+                                                                    <span className="text-primary/60 mr-2">[{i + 1}]</span>{entry}
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {(runOutput || (jobDetails?.output && jobDetails.status === 'completed')) && (
+                                            <div className="mt-6">
+                                                <h4 className="font-bold mb-2">Output</h4>
+                                                <pre className="p-4 bg-black/40 border rounded text-sm text-primary-foreground min-h-[100px] whitespace-pre-wrap">
+                                                    {runOutput || JSON.stringify(jobDetails?.output, null, 2)}
+                                                </pre>
+                                            </div>
+                                        )}
+
+                                        {jobDetails?.status === 'failed' && jobDetails?.output && (
+                                            <div className="mt-4 p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                                                <h4 className="font-bold text-sm text-red-400 mb-1">Error</h4>
+                                                <p className="text-sm text-red-300">{typeof jobDetails.output === 'object' ? (jobDetails.output as any).error : String(jobDetails.output)}</p>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -350,7 +324,7 @@ export default function AgentDetailPage() {
                         <div className="space-y-3">
                             <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Tags</h3>
                             <div className="flex flex-wrap gap-2">
-                                {agent.tags.map(tag => (
+                                {(agent.tags || []).map(tag => (
                                     <Badge key={tag} variant="secondary" className="bg-primary/10 text-primary-foreground border-none">
                                         {tag}
                                     </Badge>
@@ -368,7 +342,7 @@ export default function AgentDetailPage() {
                                         <Star className="h-4 w-4" />
                                         Stars
                                     </span>
-                                    <span className="font-medium">{agent.stars}</span>
+                                    <span className="font-medium">0</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2 text-muted-foreground">
@@ -380,9 +354,9 @@ export default function AgentDetailPage() {
                                 <div className="flex items-center justify-between text-sm">
                                     <span className="flex items-center gap-2 text-muted-foreground">
                                         <Clock className="h-4 w-4" />
-                                        Updated
+                                        Created At
                                     </span>
-                                    <span className="font-medium">{agent.updatedAt}</span>
+                                    <span className="font-medium">{new Date(agent.created_at).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         </div>
@@ -391,9 +365,9 @@ export default function AgentDetailPage() {
 
                         <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-3">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-primary">Quality Score</h3>
-                            <div className="text-3xl font-headline font-bold">{agent.rating} <span className="text-sm text-muted-foreground font-normal">/ 10</span></div>
+                            <div className="text-3xl font-headline font-bold">10 <span className="text-sm text-muted-foreground font-normal">/ 10</span></div>
                             <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                <div className="bg-primary h-full rounded-full" style={{ width: `${agent.rating * 10}%` }} />
+                                <div className="bg-primary h-full rounded-full" style={{ width: `100%` }} />
                             </div>
                             <p className="text-[10px] text-muted-foreground">Calculated based on run success rate and feedback.</p>
                         </div>

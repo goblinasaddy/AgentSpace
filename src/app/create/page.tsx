@@ -11,13 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { generateAgentConfiguration } from '@/ai/flows/generate-agent-configuration-flow';
 import { toast } from '@/hooks/use-toast';
-import { useAgents } from '@/context/agents-context';
-import { Agent } from '@/lib/types';
+import { createAgent, Agent } from '@/lib/agents';
 import { useRouter } from 'next/navigation';
 
 export default function CreateAgentPage() {
     const router = useRouter();
-    const { addAgent } = useAgents();
     const [description, setDescription] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
@@ -60,39 +58,37 @@ export default function CreateAgentPage() {
         setIsCreating(true);
 
         try {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            const newAgent: Agent = {
-                id: repoName + '-' + Math.random().toString(36).substring(7),
+            const newAgentData: Partial<Agent> = {
                 name: repoName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-                owner: 'addy', // Hardcoded current user
+                slug: repoName + '-' + Math.random().toString(36).substring(2, 8),
+                owner_username: 'addy', // Hardcoded current user
+                full_name: 'Addy User', // Hardcoded full name
                 description: description || `AI Agent for ${repoName}`,
                 tags: ['Custom', 'New'],
-                type: 'input-output',
-                rating: 0,
-                runs: '0',
-                stars: 0,
-                forks: 0,
-                issuesCount: 0,
-                pullRequestsCount: 0,
-                category: 'General',
-                updatedAt: 'Just now',
-                readme: `# ${repoName}\n\n${description || "No description provided."}`,
-                promptTemplate: promptTemplate,
-                configYaml: `name: ${repoName}\ntype: interactive`,
-                metadataJson: `{"version": "1.0.0"}`,
-                usageCode: `// Example usage\nconst response = await agent.run({ input: "your data" });`,
+                type: 'prompt',
+                execution_mode: 'realtime',
+                config: {
+                    promptTemplate,
+                    configYaml: `name: ${repoName}\ntype: interactive`,
+                    metadataJson: `{"version": "1.0.0"}`,
+                    usageCode: `// Example usage\nconst response = await agent.run({ input: "your data" });`,
+                },
+                runtime: 'node18',
+                entry_point: 'index.ts',
             };
 
-            addAgent(newAgent);
+            const createdAgent = await createAgent(newAgentData);
+
+            if (!createdAgent) {
+                throw new Error("Failed to create agent in Supabase");
+            }
 
             toast({
                 title: "Repository Created!",
-                description: `Successfully created ${newAgent.name}.`,
+                description: `Successfully created ${createdAgent.name}.`,
             });
 
-            router.push(`/agent/${newAgent.id}`);
+            router.push(`/agent/${createdAgent.slug}`);
         } catch (error) {
             toast({
                 title: "Creation Failed",
